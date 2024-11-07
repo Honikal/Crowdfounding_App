@@ -22,30 +22,30 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-var _UsuarioEntidad_dbRef;
+var _ProyectoEntidad_dbRef;
 Object.defineProperty(exports, "__esModule", { value: true });
 const firebaseAdmin_1 = __importDefault(require("../config/firebaseAdmin"));
-const users_1 = __importDefault(require("../models/users"));
-class UsuarioEntidad {
+const projects_1 = __importDefault(require("../models/projects"));
+class ProyectoEntidad {
     constructor() {
-        _UsuarioEntidad_dbRef.set(this, void 0);
-        __classPrivateFieldSet(this, _UsuarioEntidad_dbRef, firebaseAdmin_1.default.database().ref('users'), "f");
+        _ProyectoEntidad_dbRef.set(this, void 0);
+        __classPrivateFieldSet(this, _ProyectoEntidad_dbRef, firebaseAdmin_1.default.database().ref('projects'), "f");
     }
-    //GETTERS Usuario  (Método de validación para usuario por correo y contraseña)
+    //GETTERS Proyecto  (Método de validación para usuario por correo y contraseña)
     /**
-     * Función encargada de validar la existencia de un usuario antes de ingresar o iniciar sesión
+     * Función encargada de recibir una id_proyecto y retornar el proyecto específico como tal
+     * Es práctico a la hora del método GET para mostrar los datos del proyecto al modificar
      * @async
-     * @param {String} email
-     * @returns {Promise<Usuario>}       - Retorna true si encuentra un usuario con ese correo, sino, no retorna false
+     * @param {string} id_proyecto
+     * @returns {Promise<Proyecto>}       - Retorna true si encuentra un usuario con ese correo, sino, no retorna false
      */
-    getUserByEmail(email) {
+    getProjectoByID(id_proyecto) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const snapshot = yield __classPrivateFieldGet(this, _UsuarioEntidad_dbRef, "f").get();
+                const snapshot = yield __classPrivateFieldGet(this, _ProyectoEntidad_dbRef, "f").child(id_proyecto).get();
                 if (snapshot.exists()) {
-                    const userData = snapshot.val();
-                    const usuarios = Object.keys(userData).map((id) => (Object.assign(Object.assign({}, userData[id]), { idUsuario: id })));
-                    return usuarios.find((user) => user.correo === email) || null;
+                    const proyectoData = snapshot.val();
+                    return this.createProyectoFromData(proyectoData); //Transformamos los datos directamente al objeto
                 }
                 return null;
             }
@@ -56,19 +56,19 @@ class UsuarioEntidad {
         });
     }
     /**
-     * Función encargada de validar la existencia de un usuario antes de ingresar o iniciar sesión
+     * Función encargada de recibir una id_creador y con base a éste, retornar el proyecto del usuario como tal a realizar
      * @async
-     * @param {string} id_usuario
-     * @returns {Promise<Usuario>}       - Retorna true si encuentra un usuario con ese correo, sino, no retorna false
+     * @param {string} id_creador
+     * @returns {Promise<Proyecto>}       - Retorna true si encuentra un usuario con ese correo, sino, no retorna false
      */
-    getUserByID(id_usuario) {
+    getProjectoByIDCreador(id_creador) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const snapshot = yield __classPrivateFieldGet(this, _UsuarioEntidad_dbRef, "f").child(id_usuario).get();
+                const snapshot = yield __classPrivateFieldGet(this, _ProyectoEntidad_dbRef, "f").get();
                 if (snapshot.exists()) {
-                    const usuarioData = snapshot.val();
-                    const usuario = this.createUsuarioFromData(usuarioData);
-                    return usuario;
+                    const proyectoData = snapshot.val();
+                    const proyectos = Object.keys(proyectoData).map((id) => (Object.assign(Object.assign({}, proyectoData[id]), { idUsuario: id })));
+                    return proyectos.find((proyecto) => proyecto.id_creador === id_creador) || null;
                 }
                 return null;
             }
@@ -79,21 +79,22 @@ class UsuarioEntidad {
         });
     }
     /**
-     * Función encargada de retornar la lista completa de usuarios dentro del sistema
+     * Función encargada de retornar toda una lista de proyectos dentro del sistema a mostrar,
+     * luego por fuera nos encargaremos a categorizar cuales mostrar y cuales no, o cambiaremos ésta función
      * @async
-     * @returns {Promise<Usuario[]>}       - Retorna true si encuentra un usuario con ese correo, sino, no retorna false
+     * @returns {Promise<Proyecto[]>}       - Retorna true si encuentra un usuario con ese correo, sino, no retorna false
      */
-    getUsers() {
+    getProjectos() {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const snapshot = yield __classPrivateFieldGet(this, _UsuarioEntidad_dbRef, "f").get();
+                const snapshot = yield __classPrivateFieldGet(this, _ProyectoEntidad_dbRef, "f").get();
                 if (snapshot.exists()) {
-                    const usuarioData = snapshot.val();
-                    const usuarios = Object.keys(usuarioData).map((id) => {
-                        const dataWithId = Object.assign(Object.assign({}, usuarioData[id]), { idUsuario: id });
-                        return this.createUsuarioFromData(dataWithId);
+                    const proyectoData = snapshot.val();
+                    const proyectos = Object.keys(proyectoData).map((id) => {
+                        const dataWithId = Object.assign(Object.assign({}, proyectoData[id]), { idUsuario: id });
+                        return this.createProyectoFromData(dataWithId);
                     });
-                    return usuarios;
+                    return proyectos;
                 }
                 return null;
             }
@@ -104,49 +105,48 @@ class UsuarioEntidad {
         });
     }
     /*
-    async getUsers() {
+    async getProjectos() {
         try {
             const snapshot = await this.#dbRef.get();
             if (snapshot.exists()){
-                const usuarioData = snapshot.val();
+                const proyectoData = snapshot.val();
 
-                const usuarios = Object.keys(usuarioData).map((id) => {
+                const proyectos = Object.keys(proyectoData).map((id) => {
                     return {
-                        ...usuarioData[id],
-                        idUsuario: id
+                        ...proyectoData[id],
+                        idProyecto: id
                     }
                 });
-                return usuarios;
+                return proyectos;
             }
             return null;
         } catch (error){
             console.error("Error en la capa entidad, (authenticateUser): ", error);
             throw error;
         }
-    }
-    */
+    }*/
     //ADD
     /**
      * Función encargada de la validación de un usuario por correo y contraseña
      * @async
-     * @param {Usuario} usuario
+     * @param {Proyecto} proyecto
      * @returns {void}
      */
-    addUsuario(usuario) {
+    addProyecto(proyecto) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const newUsuarioRef = __classPrivateFieldGet(this, _UsuarioEntidad_dbRef, "f").push();
-                yield newUsuarioRef.set({
-                    rol: usuario.getRole,
-                    activa: usuario.isActiva,
-                    nombre_completo: usuario.getNombre,
-                    cedula: usuario.getCedula,
-                    area_trabajo: usuario.getAreaTrabajo,
-                    presupuesto: usuario.getPresupuesto,
-                    telefono: usuario.getTelefono,
-                    correo: usuario.getCorreo,
-                    password: usuario.getPassword,
-                    categorias: usuario.getCategorias,
+                const newProyectoRef = __classPrivateFieldGet(this, _ProyectoEntidad_dbRef, "f").push();
+                yield newProyectoRef.set({
+                    activa: proyecto.isActiva,
+                    nombre: proyecto.getNombre,
+                    id_creador: proyecto.getIdCreador,
+                    descripcion: proyecto.getDescripcion,
+                    categorias: proyecto.getCategoria,
+                    objetivo_financiero: proyecto.getObjetivoFinanciero,
+                    fondos_recaudados: proyecto.getFondosRecaudados,
+                    fecha_creacion: proyecto.getFechaCreacion,
+                    fecha_limite: proyecto.getFechaLimite,
+                    media: proyecto.getMedia
                 });
             }
             catch (error) {
@@ -159,22 +159,22 @@ class UsuarioEntidad {
     /**
      * Función encargada de aplicar cambios en el sistema al usuario
      * @async
-     * @param {string} idUsuario             - ID del usuario a modificar
+     * @param {string} idProyecto            - ID del proyecto a modificar
      * @param {data}   datosActualizar       - Struct con distintos datos del objeto a modificar
      * @returns {void} No retorna nada, nada más aplica los cambios e imprime un console.log() verificando los cambios
      */
-    editUsuario(idUsuario, datosActualizar) {
+    editProyecto(idProyecto, datosActualizar) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const usuarioRef = __classPrivateFieldGet(this, _UsuarioEntidad_dbRef, "f").child(idUsuario);
-                const snapshot = yield usuarioRef.get();
+                const proyectoRef = __classPrivateFieldGet(this, _ProyectoEntidad_dbRef, "f").child(idProyecto);
+                const snapshot = yield proyectoRef.get();
                 //Checamos la existencia del proyecto, si no tiramos el error
                 if (!snapshot.exists()) {
-                    console.log(`Usuario con ID ${idUsuario} no encontrado.`);
-                    throw new Error(`El usuario ingresado no existe en la Base de Datos.`);
+                    console.log(`Proyecto con ID ${idProyecto} no encontrado.`);
+                    throw new Error(`El proyecto recibido no existe en la Base de Datos.`);
                 }
                 //Si funciona, entonces proceder con la actualización del proyecto
-                yield usuarioRef.update(datosActualizar);
+                yield proyectoRef.update(datosActualizar);
                 console.log("Confirmación capa entidad de actualización del usuario");
             }
             catch (error) {
@@ -186,15 +186,15 @@ class UsuarioEntidad {
     /**
      * Función encargada de aplicar formato de base de datos a usuario clase
      * @async
-     * @param {Object} usuarioData           - Objeto de usuario extraído del sistema
-     * @returns {Usuario}                    - Retorna la clase usuario como tal
+     * @param {Object} proyectoData           - Objeto de usuario extraído del sistema
+     * @returns {Proyecto}                    - Retorna la clase usuario como tal
      */
-    createUsuarioFromData(usuarioData) {
+    createProyectoFromData(proyectoData) {
         //Extraemos la data de la base de datos como tal
-        const { idUsuario, activa, nombre_completo, cedula, area_trabajo, cantidad_bolsillo, telefono, correo, password, categorias, rol } = usuarioData;
-        const usuario = new users_1.default(idUsuario, nombre_completo, cedula, area_trabajo, cantidad_bolsillo, telefono, correo, password, activa, categorias, rol);
-        return usuario;
+        const { idProyecto, id_creador, activa, nombre, descripcion, categorias, objetivo_financiero, fondos_recaudados, fecha_creacion, fecha_limite, media } = proyectoData;
+        const proyecto = new projects_1.default(idProyecto, id_creador, activa, nombre, descripcion, categorias, objetivo_financiero, fondos_recaudados, fecha_creacion, fecha_limite, media);
+        return proyecto;
     }
 }
-_UsuarioEntidad_dbRef = new WeakMap();
-exports.default = UsuarioEntidad;
+_ProyectoEntidad_dbRef = new WeakMap();
+exports.default = ProyectoEntidad;
