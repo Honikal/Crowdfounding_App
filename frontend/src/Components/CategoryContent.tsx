@@ -1,10 +1,9 @@
-import { FaAngleLeft, FaAngleRight } from 'react-icons/fa'
-import styles from '../Styles/ComponentStyles/CategoryContent.module.css'
+import { FaAngleLeft, FaAngleRight } from 'react-icons/fa';
+import styles from '../Styles/ComponentStyles/CategoryContent.module.css';
 import React, { useEffect, useRef, useState } from 'react';
-
 import { useNavigate } from 'react-router-dom';
 
-interface User{
+interface User {
     idUsuario: string,
     nombre: string,
     activa: boolean,
@@ -18,84 +17,74 @@ interface User{
     telefono: string
 }
 
-interface CategoryContentProps{
+interface CategoryContentProps {
     categories: string[];
-    user: User
+    user: User;
 }
 
-function CategoryContent( { categories, user }: CategoryContentProps){
-    //Seteamos valores y funciones para chequear caso de overflowing
+function CategoryContent({ categories, user }: CategoryContentProps) {
     const [scrollPosition, setScrollPosition] = useState(0);
-
     const [isOverflowing, setIsOverflowing] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
-
     const navigate = useNavigate();
 
     const checkOverflow = () => {
         const container = containerRef.current;
-        if (container){
+        if (container) {
             setIsOverflowing(container.scrollWidth > container.clientWidth);
         }
     };
 
     useEffect(() => {
         checkOverflow();
-        window.addEventListener('resize', checkOverflow);
-        return () => window.removeEventListener('resize', checkOverflow);
-    }, [categories]);
-
-    /*Lo que hacemos acá, es obtener el posible parse int del sistema, un valor de distancia de scroll
-    desde el CSS, checando de forma responsive, y mediante ésto checamos y hacemos que el scroll también sea responsive*/
+        const handleResize = () => checkOverflow();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [categories.length]);
 
     const scrollLeft = () => {
         const scrollDistance = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scroll-distance'));
-        if (containerRef.current){
+        if (containerRef.current) {
             containerRef.current.scrollBy({ left: -scrollDistance, behavior: 'smooth' });
         }
-    }   
+    };
 
     const scrollRight = () => {
         const scrollDistance = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--scroll-distance'));
-        if (containerRef.current){
+        if (containerRef.current) {
             containerRef.current.scrollBy({ left: scrollDistance, behavior: 'smooth' });
         }
-    }
+    };
 
     const navigateToSection = (category: string) => {
-        
+        if (!category) return; // Verifica que la categoría sea válida
+
         navigate("/search/categories", {
-            state: { category, user }
+            state: { category, user: { ...user, categorias: user.categorias || [] } }
         });
-    }
+    };
 
     return (
         <div className={`${styles.HeaderContainer} ${isOverflowing ? styles.overflowing : ''}`}>
-            {isOverflowing  && (
+            {isOverflowing && (
                 <button className={styles.Scrollbutton} onClick={scrollLeft}>
-                    <FaAngleLeft className={styles.ScrollIcon}/>
+                    <FaAngleLeft className={styles.ScrollIcon} />
                 </button>
             )}
-
-            <div className={`${styles.categoriesContainer} ${!isOverflowing ? styles.spaceBetween : ''}`}
-                ref={containerRef}
-            >
+            <div className={`${styles.categoriesContainer} ${!isOverflowing ? styles.spaceBetween : ''}`} ref={containerRef}>
                 {categories.map((category, index) => (
                     <div key={index} className={styles.categoryButton} onClick={() => navigateToSection(category)}>
                         {category}
                     </div>
                 ))}
             </div>
-
-            {
-                isOverflowing && (
-                    <button className={styles.Scrollbutton} onClick={scrollRight}>
-                        <FaAngleRight className={styles.ScrollIcon}/>
-                    </button>
-                )
-            }
+            {isOverflowing && (
+                <button className={styles.Scrollbutton} onClick={scrollRight}>
+                    <FaAngleRight className={styles.ScrollIcon} />
+                </button>
+            )}
         </div>
-    )
+    );
 }
 
 export default CategoryContent;
