@@ -3,8 +3,12 @@ import { FaUserCircle, FaIdCard, FaPhoneSquareAlt, FaUserLock, FaEye, FaEyeSlash
 import { MdOutlineEmail, MdOutlineWork } from 'react-icons/md';
 import { GiReceiveMoney } from 'react-icons/gi';
 import { BiSolidInfoCircle } from 'react-icons/bi';
+import { useAuth } from '../Components/AuthContext'
+import { useNavigate } from "react-router-dom";
+
 
 import styles from '../Styles/SignUpPage.module.css';
+import { signUpUser } from "../ConnectionToBackend/Routes/signUpUser";
 
 //Por cada uso de datos tipo object se ocupa un posible Interface
 interface User{
@@ -15,10 +19,13 @@ interface User{
     telephone: string,
     budget: Number,
     password: string,
-    confirmPassword: string
+    confirmPassword: string,
+    categories: string[]
 };
 
 function SignUpPage() {
+    const { isAuthenticated, login, logout } = useAuth();
+
     const [usuario, setUsuario] = useState<User>({
         name: "",
         id: "",
@@ -27,8 +34,12 @@ function SignUpPage() {
         telephone: "",
         budget: 0.00,
         password: "",
-        confirmPassword: ""
+        confirmPassword: "",
+        categories: ["Tecnología", "Cocina", "Videojuegos"]
     });
+
+    //Activamos la navegacion
+    const navigate = useNavigate();
 
     const [showPassword, setShowPassword] = useState<boolean>(false);
     const [passwordStrength, setPasswordStrength] = useState<String>("");
@@ -68,7 +79,7 @@ function SignUpPage() {
                 }
                 break;
             case "budget":
-                if (parseFloat(value) < 0){
+                if (Number.isNaN(value) || parseFloat(value) < 0){
                     error = "El número debe ser un valor entero";
                 }
                 break;
@@ -99,7 +110,15 @@ function SignUpPage() {
     }
 
     //Función encargada de hacer la validación del programa
-    const validateUserData = () => {
+    const validateUserData = async() => {
+//Checamos por errores existentes
+        const hasErrors = Object.values(errorMessages).some(message => message !== "");
+
+        if (hasErrors){
+            alert("Corrige los errores antes de continuar");
+            return;
+        }
+
         const requiredFields = ["name", "id", "email", "telephone", "password", "confirmPassword"];
         let formIsValid = true;
 
@@ -115,7 +134,17 @@ function SignUpPage() {
         })
 
         if (formIsValid) {
-            alert("Mockup de registro realizado exitosamente"); 
+            //alert("Mockup de registro realizado exitosamente"); 
+
+            //Validamos o parseamos los datos
+            const validUserData = {
+                ...usuario,
+                budget: Number(usuario.budget)
+            };
+
+            const userData = await signUpUser(validUserData);
+            login();
+            navigate("/main-page", { state: { user: userData } });
         } else {
             alert("No se puede registrar, corrija los errores");
         }
