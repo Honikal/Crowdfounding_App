@@ -1,13 +1,12 @@
 import React, {useEffect, useState} from 'react';
-import styles from '../Styles/SearchedProjectPage.module.css';
+import styles from '../Styles/MyProjectsPage.module.css';
 import { FaUser, FaCalendarDay } from 'react-icons/fa';
 
 
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useUser } from '../Components/UserContext';
 import CategoryContent from '../Components/CategoryContent';
-import { getProjectsCategory } from '../ConnectionToBackend/Routes/getProjectCategory';
-
+import { getProjectsUser } from '../ConnectionToBackend/Routes/getProjectsUser';
 
 interface Proyecto {
     idProyecto: string,
@@ -27,22 +26,14 @@ interface Proyecto {
     porcentajeFundado: number
 }
 
-function SearchedProjectPage(){
+function MyProjectsPage(){
     //Manejamos el recibo de parámetros
     const location = useLocation();
     const { setUser } = useUser();
-    const user = location.state?.user; //Recibimos al usuario
-    const navigate = useNavigate();
-
-    //Manejar hover
-    const [categoria, setCategorias] = useState<string>("");
-    const [hoveredProject, setHoveredProject] = useState<string | null>(null);
-    const [videoIndexes, setVideoIndexes] = useState<{ [key: string]: number }>({});
+    const user = location.state?.user;        //Recibimos al usuario
 
     const [proyectos, setProyectos] = useState<Proyecto[]>([]);
-    const [featuredProject, setFeaturedProject] = useState<Proyecto | null>(null);
-    const [recommendedProjects, setRecommendedProjects] = useState<Proyecto[]>([]);
-
+    const [hoveredProject, setHoveredProject] = useState<string | null>(null);
     const [totalCategorias, setTotalCategorias] = useState<string[]>([
         "Tecnología", 
         "Cocina",
@@ -56,23 +47,37 @@ function SearchedProjectPage(){
         "Música",
         "Artesanías"
     ])
+    const [videoIndexes, setVideoIndexes] = useState<{ [key: string]: number }>({});
+
 
     useEffect(() => {
         //Asumimos que obtenemos los datos del usuario de otro modo
         const userData = location.state?.user;
         if (userData){
             setUser(userData);
-            console.log("Asignamos las categorías del usuario: ", userData.categorias);
         }
-    }, [location, setUser]);
 
-    useEffect(() => {
-        //Otro useEffect independiente que está conectado con el getter del sistema
-        
-        //Tomamos la existencia del posible texto de los proyectos a buscar
-        const categoryToSearch = location.state?.category;
-        setCategorias(categoryToSearch);
-        
+        const isVideoFile = async (fileUrl: string): Promise<boolean> => {
+            try {
+                const response = await fetch(fileUrl);
+                const contentType = response.headers.get("Content-Type");
+                return contentType?.startsWith("video/") ?? false;
+            } catch (error) {
+                console.error("Error fetching file metadata:", error);
+                return false;
+            }
+        };
+
+        const getFirstVideoIndex = async (media: string[]): Promise<number> => {
+            for (let i = 0; i < media.length; i++) {
+                const isVideo = await isVideoFile(media[i]);
+                if (isVideo) {
+                    return i; // Return index if a video is found
+                }
+            }
+            return -1; // Return -1 if no video is found
+        };
+
         //Buscamos la existencia de un vídeo
         const fetchVideoIndexes = async (projects: Proyecto[]) => {
             const indexes: { [key: string]: number } = {};
@@ -84,44 +89,12 @@ function SearchedProjectPage(){
         };
 
         const getProyectos = async() => {
-            const fetchedProyectos = await getProjectsCategory(categoryToSearch);
-            const filteredProyectos = categorizeProjects(fetchedProyectos);
+            const filteredProyectos = await (getProjectsUser(userData.idUsuario))
             setProyectos(filteredProyectos);
             await fetchVideoIndexes(filteredProyectos);
         }
         getProyectos();
-    }, [location.state?.category])
-
-    //Filtrar proyectos
-    const categorizeProjects = (fetchedProyectos: Proyecto[]) => {
-        //Filtramos proyectos no expirados
-        const activeProyectos = fetchedProyectos.filter(proyecto => proyecto.diasRestantes > 0);
-        return activeProyectos
-    }
-
-    const isVideoFile = async (fileUrl: string): Promise<boolean> => {
-        try {
-            const response = await fetch(fileUrl);
-            const contentType = response.headers.get("Content-Type");
-            return contentType?.startsWith("video/") ?? false;
-        } catch (error) {
-            console.error("Error fetching file metadata:", error);
-            return false;
-        }
-    };
-    const getFirstVideoIndex = async (media: string[]): Promise<number> => {
-        for (let i = 0; i < media.length; i++) {
-            const isVideo = await isVideoFile(media[i]);
-            if (isVideo) {
-                return i; // Return index if a video is found
-            }
-        }
-        return -1; // Return -1 if no video is found
-    };
-
-    const navigateToProject = (proyecto: Proyecto) => {
-        navigate('/project', { state: { user: user, project: proyecto }});
-    }
+    }, [location, setUser]);
 
     const DisplayProjectContent = (proyecto: Proyecto) => {
         //Tomamos la index del primer vídeo encontrado
@@ -131,7 +104,7 @@ function SearchedProjectPage(){
             <>  
                 <div className={styles.ShownContainer}>
                     <div
-                        className={styles.mediaContainer}
+                        className={styles.MediaContainer}
                         onMouseEnter={() => setHoveredProject(proyecto.idProyecto)}
                         onMouseLeave={() => setHoveredProject(null)}
                     >
@@ -167,7 +140,10 @@ function SearchedProjectPage(){
                     </div>
                 </div>
 
-                <div className={styles.Description}>
+                <div
+                    className={`
+                        ${styles.Description}
+                    `}>
                     <div className={styles.TextDescription}>
                         <p id={styles.desc}>{proyecto.descripcion}</p>
                     </div>
@@ -188,24 +164,16 @@ function SearchedProjectPage(){
     return (
         <>
             <CategoryContent categories={totalCategorias} user={user}/>
-            <div className={styles.SearchedProjectPage}>
-                <div className={styles.ProjectSelector}>
-                    <p>Categoría: {categoria}</p>
-                </div>
-
-                <div className={styles.ProjectSection}>
-                    <div className={styles.ProjectsDivision}>
-                        {proyectos.map(proyecto => (
-                            <div className={styles.Project} onClick={() => navigateToProject(proyecto)}>
-                                {DisplayProjectContent(proyecto)}
-                            </div>
-                        ))}
+            <div className={styles.MyProjectsPage}>
+                {proyectos.map(proyecto => (
+                    <div className={styles.Project}>
+                        {DisplayProjectContent(proyecto)}
                     </div>
-                </div>
-
+                ))}
             </div>
         </>
+        
     )
 }
 
-export default SearchedProjectPage;
+export default MyProjectsPage;

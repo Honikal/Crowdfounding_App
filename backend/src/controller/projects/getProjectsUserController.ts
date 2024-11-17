@@ -23,11 +23,20 @@ function calculateFundingPercentage(fondosRecaudados: number, objetivoFinanciero
     return ((fondosRecaudados / objetivoFinanciero) * 100).toFixed(2) + '%';
 }
 
-export const getProjectController = async(req: Request, res: Response): Promise<void> => {
+export const getProjectsUserController = async(req: Request, res: Response): Promise<void> => {
     try {
         //Checamos la solicitud sea un POST
         if (req.method !== 'GET'){
             res.status(405).send('Solo métodos GET son permitidos');
+            return;
+        }
+
+        //Extraemos los datos
+        const id_creador = req.query.id_creador as string;
+
+        //Validamos si las entradas son válidas
+        if (!id_creador){
+            res.status(400).send('Todos los campos son requeridos');
             return;
         }
 
@@ -36,9 +45,11 @@ export const getProjectController = async(req: Request, res: Response): Promise<
         const usuarioEntidad = new UsuarioEntidad();
         const allProyectos = await proyectoEntidad.getProjectos() || [];
 
+        const userProyectos = allProyectos.filter((proyecto) => proyecto.id_creador === id_creador);
+
         const proyectosTransformados: any[] = [];
 
-        for (const proyecto of allProyectos){
+        for (const proyecto of userProyectos){
             //Obtención del nombre del creador
             const usuario = await usuarioEntidad.getUserByID(proyecto.id_creador);
             const nombreCreador = usuario ? usuario.getNombre : 'Desconocido';
@@ -76,6 +87,8 @@ export const getProjectController = async(req: Request, res: Response): Promise<
                 porcentajeFundado: calculateFundingPercentage(proyecto.fondos_recaudados, proyecto.objetivo_financiero)
             })
         }
+
+        console.log("Transformed projects:", proyectosTransformados);  // Ensure this logs expected data
         //Respondemos con la lista de los proyectos
         res.status(200).json(proyectosTransformados);
     } catch (error: any) {

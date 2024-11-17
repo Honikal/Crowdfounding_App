@@ -12,6 +12,10 @@ import ModifyUserPage from "../Views/ModifyUserPage";
 import ProjectPage from "../Views/ProjectPage";
 import NewProjectPage from "../Views/NewProjectPage";
 import SearchedProjectPage from "../Views/SearchedProjectPage";
+import MyProjectsPage from "../Views/MyProjectsPage";
+
+import DonatePage from "../Views/DonatePage";
+import MyDonationsPage from "../Views/MyDonationsPage";
 
 
 //Main Page
@@ -69,9 +73,26 @@ export const router = createBrowserRouter([
                 element: <ProjectPage/>
             },
             {
+                //Método para donar los proyectos
+                path: "/project/donate",
+                element: <DonatePage/>
+            },
+            {
                 //Páginas específicas para proyectos
                 path: "/search/categories",
                 element: <SearchedProjectPage/>
+            },
+            {
+                //Páginas específicas para proyecto de usuario
+                path: "/my-projects",
+                element: <MyProjectsPage/>
+            },
+
+            /*Área de donación*/
+            {
+                //Páginas específicas para mostrar donaciones
+                path: "/my-donations",
+                element: <MyDonationsPage/>
             }
         ]        
     }
